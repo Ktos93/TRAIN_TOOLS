@@ -179,7 +179,7 @@ class TRAIN_PT_Tools(bpy.types.Panel):
 
         layout.separator()
         for prop_name in Track_Properties.__annotations__:
-            if prop_name in ["id", "track_object"]:
+            if prop_name in ["id"]:
                 continue
             layout.prop(selected_track, prop_name)
 
@@ -354,7 +354,9 @@ class TRAIN_OT_Import_Track(bpy.types.Operator, ImportHelper):
                 track.total_points = len(parsed_data)
                 track.curve_points = sum(1 for data in parsed_data if data.is_curve)
                 curve_data = bpy.data.curves.new('BezierCurve', type='CURVE')
-                curve_data.dimensions = '3D'    
+                curve_data.dimensions = '3D'  
+                curve_data.twist_mode = 'Z_UP'  
+                
                 spline = curve_data.splines.new('BEZIER')
                 spline.bezier_points.add(len(parsed_data) - 1 ) 
                 nodes = track.nodes
@@ -363,7 +365,7 @@ class TRAIN_OT_Import_Track(bpy.types.Operator, ImportHelper):
                     bp.co = Vector(point.position)
                     bp.handle_left = Vector(point.handle_a)
                     bp.handle_right = Vector(point.handle_b)
-                    bp.radius = point.get_combined_flags()  
+                    bp.radius = point.get_combined_flags() 
                     bp.handle_left_type = 'FREE'
                     bp.handle_right_type = 'FREE' 
 
