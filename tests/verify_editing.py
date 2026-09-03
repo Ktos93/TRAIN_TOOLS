@@ -5,8 +5,8 @@ Runs inside Blender 4.0 (background):
 
 Covers: applying point data through the operator path (node list sync),
 moving a point and verifying export distance recompute, reverting point
-data, point add/remove record resync, corrupt-file rejection, and data
-persistence across .blend save/reload.
+data, uid-stable record resync on middle point add/remove, corrupt-file
+rejection, and data persistence across .blend save/reload.
 
 Exit code 0 = all checks passed, 1 = failure.
 """
@@ -180,26 +180,92 @@ def main():
         check("revert.record", False, repr(e))
         traceback.print_exc()
 
-    # 4) Records must resync when control points are added (real
-    #    depsgraph handler) and truncated (unit: the same ensure function
-    #    the handler uses when a point is deleted).
+    # 4) uid stability: deleting a point in the MIDDLE of the curve must
+    #    keep every other point's uid (radius) and per-point data with the
+    #    right point (real depsgraph handler), and inserting a point must
+    #    hand the new point a fresh unique uid while the rest keep theirs.
     try:
         from TRAIN_TOOLS import storage
-        spline.bezier_points.add(1)
-        bpy.context.view_layer.update()
-        check("resync.after_add",
-              len(obj.data.train_points) == st + 1,
-              f"got {len(obj.data.train_points)}")
+        radius_uids = lambda: [storage.float_to_uint(p.radius)
+                               for p in points]
+        uids0 = radius_uids()
+        check("uid.assigned",
+              len(set(uids0)) == st and all(u > 0 for u in uids0),
+              "unique=%d of %d" % (len(set(uids0)), st))
+
         named_idx = track.nodes[0].node_index
         named_kind = obj.data.train_points[named_idx].kind
-        storage.ensure_point_records(obj.data, st)
-        check("resync.truncate", len(obj.data.train_points) == st,
-              f"got {len(obj.data.train_points)}")
-        check("resync.truncate_keeps",
-              obj.data.train_points[named_idx].kind == named_kind,
-              f"index {named_idx} kind {named_kind}")
+        named_name = obj.data.train_points[named_idx].name
+
+        # Delete a plain (kind '0') point away from the named one.
+        # The edit-mode removal operator cannot run in a background
+        # session (no 3D viewport for its poll), so rebuild the spline
+        # without the point instead: same curve data and the same
+        # radii (uids) for every other point - exactly the state a real
+        # deletion leaves behind, which is what the handler resyncs.
+        mid = next(i for i in range(st)
+                   if i != named_idx
+                   and obj.data.train_points[i].kind == "0")
+        kept = [(bp.co[:], bp.handle_left[:], bp.handle_right[:],
+                 bp.handle_left_type, bp.handle_right_type, bp.radius)
+                for i, bp in enumerate(points) if i != mid]
+        new_spline = obj.data.splines.new('BEZIER')
+        new_spline.bezier_points.add(len(kept) - 1)
+        for i, (co, hl, hr, hlt, hrt, r) in enumerate(kept):
+            bp = new_spline.bezier_points[i]
+            bp.co = co
+            bp.handle_left = hl
+            bp.handle_right = hr
+            bp.handle_left_type = hlt
+            bp.handle_right_type = hrt
+            bp.radius = r
+        obj.data.splines.remove(spline)
+        spline = new_spline
+        points = spline.bezier_points
+        bpy.context.view_layer.update()
+        recs1 = obj.data.train_points
+        check("resync.after_mid_delete", len(recs1) == st - 1,
+              f"got {len(recs1)}")
+        radii1 = radius_uids()
+        expected = [u for i, u in enumerate(uids0) if i != mid]
+        check("uid.mid_delete_radii", radii1 == expected,
+              "len=%d/%d" % (len(radii1), len(expected)))
+        named_idx1 = radii1.index(uids0[named_idx])
+        check("uid.mid_delete_data",
+              named_idx1 == named_idx - (1 if mid < named_idx else 0)
+              and recs1[named_idx1].kind == named_kind
+              and recs1[named_idx1].name == named_name,
+              "idx=%d kind=%s name=%r"
+              % (named_idx1, recs1[named_idx1].kind,
+                 recs1[named_idx1].name))
+        check("resync.nodes_unchanged", len(track.nodes) == base_nodes,
+              f"got {len(track.nodes)}")
+
+        # Insert a point at the end; it must get a fresh unique uid and
+        # a default record, every other uid stays put.
+        last = points[st - 2]
+        points.add(1)
+        points[st - 1].co = (last.co.x + 5.0, last.co.y, last.co.z)
+        bpy.context.view_layer.update()
+        recs2 = obj.data.train_points
+        check("resync.after_add", len(recs2) == st,
+              f"got {len(recs2)}")
+        radii2 = radius_uids()
+        check("uid.add_kept", radii2[:st - 1] == radii1,
+              "len=%d" % len(radii2))
+        fresh = radii2[st - 1]
+        check("uid.add_fresh",
+              fresh > 0 and fresh not in radii1
+              and len(set(radii2)) == st,
+              f"fresh={fresh}")
+        check("uid.add_record",
+              recs2[st - 1].uid == fresh and recs2[st - 1].kind == "0",
+              f"uid={recs2[st - 1].uid} kind={recs2[st - 1].kind}")
+        check("uid.add_data",
+              recs2[named_idx1].kind == named_kind
+              and recs2[named_idx1].name == named_name)
     except Exception as e:
-        check("resync.after_add", False, repr(e))
+        check("uid.stability", False, repr(e))
         traceback.print_exc()
 
     # 5) Corrupt file (unknown flag) must be rejected, track untouched.
@@ -242,6 +308,10 @@ def main():
         check("persist.object", obj2 is not None and obj2.type == 'CURVE')
         recs = obj2.data.train_points
         check("persist.records", len(recs) == st, f"got {len(recs)}")
+        check("persist.uids",
+              all(r.uid > 0 and r.uid == storage.float_to_uint(bp.radius)
+                  for r, bp in zip(recs,
+                                   obj2.data.splines[0].bezier_points)))
         check("persist.curve_count",
               sum(1 for r in recs if r.is_curve) == sc,
               f"got {sum(1 for r in recs if r.is_curve)}")

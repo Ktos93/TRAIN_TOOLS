@@ -106,7 +106,8 @@ class TRAIN_PT_Point_Info(bpy.types.Panel):
             return
 
         scene = context.scene
-        layout.label(text="Point %d" % index)
+        layout.label(text="Point %d  (UID %d)"
+                     % (index, obj.data.train_points[index].uid))
         column = layout.column()
         column.prop(scene, "point_kind", text="Kind")
         column.prop(scene, "point_is_curve", text="Has Handles")

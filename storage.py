@@ -2,22 +2,79 @@
 
 Blender 4.0 has no custom attributes for curve spline points, so each
 track curve carries a `train_points` collection of TrainPoint records,
-aligned by index with the curve's bezier control points. Records are
-kept in sync by the depsgraph handler (see main.py) and re-validated on
-import/export.
+aligned by index with the curve's bezier control points.
+
+Every control point carries a stable uid (a random uint32) in its
+`radius` field, bit-encoded with uint_to_float. The uid never changes:
+import assigns one per point and points the user inserts in the
+viewport get a fresh one on resync. The depsgraph handler (see
+main.py) rebuilds the record list by matching records to points on
+this uid, so per-point data follows its point when control points are
+inserted or deleted anywhere in the curve.
 
 `track.nodes` is derived data: it is rebuilt from the per-point records
 whenever point data changes, so it can never fall out of sync the way
 the old manually-managed node list could.
 """
+import random
+import struct
+
 import bpy
 from .dat_format import (KIND_ITEMS, NAMED_KINDS, KIND_LABELS, distance,
                          MARKER_PREFIX)
 from .utils import compute_probe_hash
 
 
+def float_to_uint(f: float) -> int:
+    """Konwertuje float32 na uint32 (bitowo)"""
+    return struct.unpack('>I', struct.pack('>f', f))[0]
+
+
+def uint_to_float(u: int) -> float:
+    """Konwertuje uint32 z powrotem na float32"""
+    return struct.unpack('>f', struct.pack('>I', u))[0]
+
+
+# Highest uint32 whose bit pattern is a positive finite float32; uids
+# must decode to a value a bezier point radius (float in [0, inf]) can
+# store without clamping.
+UID_MAX = 0x7F7FFFFF
+
+
+def generate_uid(taken):
+    """A random uint32 not in `taken` that round-trips through a radius.
+
+    uint_to_float/float_to_uint is a bit-level mapping, so any uint in
+    1..UID_MAX stores in a radius losslessly; the range only excludes
+    bit patterns that would become negative, NaN or infinite floats.
+    """
+    while True:
+        uid = random.randint(1, UID_MAX)
+        if uid not in taken:
+            return uid
+
+
+def generate_uids(count, taken=None):
+    """`count` fresh unique uids, none of them in `taken` (if given)."""
+    taken = set(taken) if taken is not None else set()
+    uids = []
+    for _ in range(count):
+        uid = generate_uid(taken)
+        taken.add(uid)
+        uids.append(uid)
+    return uids
+
+
 class TrainPoint(bpy.types.PropertyGroup):
     """Per-point data for one bezier control point of a track curve."""
+    uid: bpy.props.IntProperty(
+        name="UID",
+        description="Stable point id, also stored bit-encoded in the "
+                    "point's radius",
+        default=0,
+        min=0,
+        max=UID_MAX,
+    )
     kind: bpy.props.EnumProperty(
         name="Kind",
         description="Special data stored in the .dat flag column",
@@ -98,45 +155,68 @@ def point_count(curve_data):
     return len(spline.bezier_points)
 
 
-def ensure_point_records(curve_data, count):
-    """Pad or truncate the record list to `count` points.
+def resync_point_records(curve_data):
+    """Rebuild the record list against the current bezier control points.
 
-    Padding appends default records (kind '0', has handles). If points
-    were removed, trailing records are dropped. Returns True if the
-    collection was modified.
+    Points are matched to their old records by the uid stored in the
+    point radius, so data follows its point across insertions and
+deletions anywhere in the curve. A point whose radius carries no
+    matching uid (e.g. just inserted in the viewport) is assigned a
+    fresh one.
     """
+    spline = get_spline(curve_data)
+    if spline is None:
+        return
+    points = spline.bezier_points
+    # Copy the old data to plain Python first: clearing the collection
+    # destroys the PropertyGroups, so holding references to them would
+    # make every read fall back to property defaults.
+    old_data = {}
+    for rec in curve_data.train_points:
+        if rec.uid and rec.uid not in old_data:
+            old_data[rec.uid] = (rec.kind, rec.is_curve, rec.name)
+    taken = set(old_data)
+    used = set()
+    uids = []
+    for bp in points:
+        uid = float_to_uint(bp.radius) if bp.radius > 0.0 else 0
+        if uid not in old_data or uid in used:
+            uid = generate_uid(taken)
+            taken.add(uid)
+            bp.radius = uint_to_float(uid)
+        used.add(uid)
+        uids.append(uid)
     records = curve_data.train_points
-    changed = False
-    while len(records) < count:
-        records.add()
-        changed = True
-    while len(records) > count:
-        records.remove(len(records) - 1)
-        changed = True
-    return changed
+    records.clear()
+    for uid in uids:
+        rec = records.add()
+        rec.uid = uid
+        old = old_data.get(uid)
+        if old is not None:
+            rec.kind, rec.is_curve, rec.name = old
 
 
 def set_record(curve_data, index, kind, is_curve, name):
-    """Write one point's data (auto-pads the record list if needed).
-
-    Padding only: the list is never truncated here, so writing one
-    point cannot destroy the records of the other points.
-    """
-    records = curve_data.train_points
-    while len(records) <= index:
-        records.add()
-    rec = records[index]
+    """Write one point's data to its record (list already resynced)."""
+    rec = curve_data.train_points[index]
     rec.kind = kind
     rec.is_curve = is_curve
     rec.name = name
 
 
-def write_points(curve_data, points):
-    """Replace all records with the given TrainPointData list."""
+def write_points(curve_data, points, uids=None):
+    """Replace all records with the given TrainPointData list.
+
+    `uids` (one per point) is the uid to store in each record; when
+    omitted, fresh uids are generated.
+    """
+    if uids is None:
+        uids = generate_uids(len(points))
     records = curve_data.train_points
     records.clear()
-    for pt in points:
+    for pt, uid in zip(points, uids):
         rec = records.add()
+        rec.uid = uid
         rec.kind = pt.kind
         rec.is_curve = pt.is_curve
         rec.name = pt.name

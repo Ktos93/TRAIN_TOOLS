@@ -156,11 +156,11 @@ def main():
     curve_count_geo = 0
     record_count = 0
     curve_count_rec = 0
-    radii = set()
+    radii = []
     if obj:
         spline = obj.data.splines[0]
         n_pts = len(spline.bezier_points)
-        radii = {round(p.radius, 4) for p in spline.bezier_points}
+        radii = [p.radius for p in spline.bezier_points]
         curve_count_geo = sum(
             1 for p in spline.bezier_points
             if (abs(p.handle_left.x - p.co.x) > 1e-6
@@ -180,8 +180,22 @@ def main():
           f"expected={st} got={record_count}")
     check("import.record_curve_count", curve_count_rec == sc,
           f"expected={sc} got={curve_count_rec}")
-    check("import.no_radius_hack", radii == {1.0},
-          f"radius values in use: {sorted(radii)}")
+    from TRAIN_TOOLS import storage
+    uid_by_point = [storage.float_to_uint(r) for r in radii]
+    check("import.uid_radius",
+          obj is not None
+          and len(uid_by_point) == n_pts
+          and all(r > 0.0 for r in radii)
+          and all(0 < u <= storage.UID_MAX for u in uid_by_point)
+          and len(set(uid_by_point)) == n_pts,
+          "unique=%d of %d" % (len(set(uid_by_point)), n_pts))
+    check("import.uid_roundtrip",
+          all(storage.float_to_uint(storage.uint_to_float(u)) == u
+              for u in uid_by_point))
+    check("import.uid_records",
+          obj is not None
+          and all(r.uid == u
+                  for r, u in zip(obj.data.train_points, uid_by_point)))
     check("import.track_meta",
           track.total_points == st and track.curve_points == sc
           and track.type == stt,

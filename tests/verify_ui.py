@@ -178,6 +178,10 @@ def main():
         check("panel.point_info_kind_prop",
               any(pn == "point_kind" for _, pn in mock.props),
               "props=%r" % [pn for _, pn in mock.props])
+        check("panel.point_info_uid",
+              any(l is not None and str(l).startswith("Point 400  (UID")
+                  for l in mock.labels),
+              "labels=%r" % [l for l in mock.labels if l])
         check("panel.point_info_apply",
               ("train.apply_point_data", "Apply to Selected") in mock.operators,
               "ops=%r" % mock.operators)

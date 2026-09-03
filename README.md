@@ -47,15 +47,16 @@ track length and the per-kind point counts.
 
 Per-point data (kind, has handles, name) is stored in a `train_points`
 collection of typed records on the curve datablock, aligned by index with
-the curve's bezier control points. Blender 4.0 has no custom attributes
-for curve spline points, so point radii are left at their default value
-and never reused as a data channel.
+the curve's bezier control points.
 
-The record list is kept in sync automatically: adding/removing control
-points pads or truncates the list. Note that inserting a point in the
-middle of the curve shifts the records of the following points (Blender
-4.0 has no stable point IDs), so re-apply flags after restructuring a
-curve.
+Blender 4.0 has no custom attributes for curve spline points, so each
+control point carries a stable uid (a random uint32) bit-encoded in its
+`radius` field via a float32/uint32 struct cast. The uid never changes
+for the lifetime of a point: import assigns one per point and a point
+inserted in the viewport gets a fresh one on the next sync. The
+depsgraph handler rebuilds the record list by matching records to points
+on the uid stored in the radius, so per-point data follows its point
+when control points are inserted or deleted anywhere in the curve.
 
 The station/junction list on a track entry is derived data, rebuilt from
 the per-point records, so it cannot fall out of sync with the curve.
@@ -77,7 +78,8 @@ import with a line number.
 | Module         | Contents                                              |
 |----------------|-------------------------------------------------------|
 | `dat_format.py`| Pure .dat parsing/formatting (no bpy, unit-testable)  |
-| `storage.py`   | Per-point records, derived node list, curve helpers   |
+| `storage.py`   | Per-point records (uid-in-radius identity), nodes,    |
+|                | curve helpers                                         |
 | `helpers.py`   | Selection/context helpers shared by ops and UI        |
 | `ops.py`       | Operators (track mgmt, import/export, point editing)  |
 | `ui.py`        | N-panel panels and UI lists                           |
@@ -114,7 +116,7 @@ point lines, distances), a re-import, and a clean unregister.
 
 `tests/verify_editing.py` covers the editing workflows: the Apply-to-Point
 operator (including the point-selection sync), distance recomputation on
-export after moving a point, record padding/truncation on control point
+export after moving a point, uid-stable record resync on middle-point
 add/remove, corrupt-file rejection, and .blend save/reload persistence.
 
 `tests/verify_ui.py` is a UI smoke test: it drives all N-panel `draw()`

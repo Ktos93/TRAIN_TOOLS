@@ -91,6 +91,7 @@ def import_dat_into_track(context, track, filepath):
     curve_data.dimensions = '3D'
     spline = curve_data.splines.new('BEZIER')
     spline.bezier_points.add(len(points) - 1)
+    uids = storage.generate_uids(len(points))
     for i, pt in enumerate(points):
         bp = spline.bezier_points[i]
         bp.co = pt.position
@@ -98,8 +99,9 @@ def import_dat_into_track(context, track, filepath):
         bp.handle_right = pt.handle_b
         bp.handle_left_type = 'FREE'
         bp.handle_right_type = 'FREE'
+        bp.radius = storage.uint_to_float(uids[i])
 
-    storage.write_points(curve_data, points)
+    storage.write_points(curve_data, points, uids)
 
     obj = bpy.data.objects.new('Track-' + track.name, curve_data)
     bpy.context.collection.objects.link(obj)
@@ -199,7 +201,7 @@ def export_track_to_file(track, filepath):
         return False, "track '%s' has no bezier points" % track.name
 
     points = spline.bezier_points
-    storage.ensure_point_records(curve_data, len(points))
+    storage.resync_point_records(curve_data)
     records = curve_data.train_points
 
     total = len(points)
@@ -280,7 +282,7 @@ class TRAIN_OT_Apply_Point_Data(bpy.types.Operator):
         scene = context.scene
         obj = context.active_object
         spline = storage.get_spline(obj.data)
-        storage.ensure_point_records(obj.data, len(spline.bezier_points))
+        storage.resync_point_records(obj.data)
         selected = [i for i, bp in enumerate(spline.bezier_points)
                     if bp.select_control_point]
         name = scene.point_name if len(selected) == 1 else ""
@@ -312,7 +314,7 @@ class TRAIN_OT_Select_Points_Kind(bpy.types.Operator):
         track = helpers.get_selected_track(context)
         obj = helpers.track_object_or_none(track)
         spline = storage.get_spline(obj.data)
-        storage.ensure_point_records(obj.data, len(spline.bezier_points))
+        storage.resync_point_records(obj.data)
         records = obj.data.train_points
         kind = context.scene.train_select_kind
         count = 0
