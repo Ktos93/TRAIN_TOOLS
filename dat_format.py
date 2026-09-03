@@ -51,6 +51,10 @@ KIND_LABELS = dict((v, label) for v, label, _ in KIND_ITEMS)
 NAMED_KINDS = (KIND_STATION, KIND_LEFT_STATION, KIND_RIGHT_STATION,
                KIND_JUNCTION)
 
+# Object-name prefix for the optional viewport text markers that are
+# created at a track's named points (see storage.marker_prefix).
+MARKER_PREFIX = "TrainMarker-"
+
 
 class TrainPointData(object):
     """A single parsed track point."""

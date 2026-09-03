@@ -120,6 +120,14 @@ def main():
               any(t[0] == ui.TRAIN_UL_NODE_LIST.bl_idname
                   for t in mock.template_lists),
               "template_lists=%r" % mock.template_lists)
+        check("panel.tools_folder_ops",
+              ("train.import_folder", "Import Folder") in mock.operators and
+              ("train.export_all", "Export All") in mock.operators,
+              "ops=%r" % mock.operators)
+        check("panel.tools_stats",
+              any(l is not None and str(l).startswith("Length:")
+                  for l in mock.labels),
+              "labels=%r" % mock.labels)
     except Exception:
         check("panel.tools_draw", False, traceback.format_exc())
 
@@ -147,10 +155,46 @@ def main():
               any(pn == "point_kind" for _, pn in mock.props),
               "props=%r" % [pn for _, pn in mock.props])
         check("panel.point_info_apply",
-              ("train.apply_point_data", "Apply to Point") in mock.operators,
+              ("train.apply_point_data", "Apply to Selected") in mock.operators,
               "ops=%r" % mock.operators)
     except Exception:
         check("panel.point_info_draw", False, traceback.format_exc())
+
+    # --- Point Tools panel (no track / with track) --------------------
+    saved_index = bpy.context.scene.track_index
+    bpy.context.scene.track_index = 10**6  # out of range: no track
+    mock = MockLayout()
+    try:
+        ui.TRAIN_PT_Point_Tools.draw(MockPanel(mock), bpy.context)
+        check("panel.point_tools_empty", True)
+    except Exception:
+        check("panel.point_tools_empty", False, traceback.format_exc())
+    bpy.context.scene.track_index = saved_index
+    mock = MockLayout()
+    try:
+        ui.TRAIN_PT_Point_Tools.draw(MockPanel(mock), bpy.context)
+        check("panel.point_tools_draw", True)
+        check("panel.point_tools_ops",
+              ("train.select_points_kind", "Select Points") in mock.operators
+              and ("train.smooth_handles", "Smooth Handles")
+              in mock.operators
+              and ("train.toggle_markers", "Toggle Markers") in mock.operators,
+              "ops=%r" % mock.operators)
+    except Exception:
+        check("panel.point_tools_draw", False, traceback.format_exc())
+
+    # --- Node list filter box ----------------------------------------
+    mock = MockLayout()
+    try:
+        class MockUL:
+            filter_name = ""        # prop() just records, no access needed
+
+        ui.TRAIN_UL_NODE_LIST.draw_filter(MockUL(), bpy.context, mock)
+        check("uilist.nodes_filter_draw",
+              any(pn == "filter_name" for _, pn in mock.props),
+              "props=%r" % [pn for _, pn in mock.props])
+    except Exception:
+        check("uilist.nodes_filter_draw", False, traceback.format_exc())
 
     # --- UIList draw_item (both lists) ------------------------------
     # Signature must match the 4.0.1 calling convention exactly.

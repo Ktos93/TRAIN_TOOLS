@@ -15,12 +15,33 @@ Blender addon for editing RDR2 train track `.dat` files as bezier curves.
    - **Has Handles** – whether the point is exported with explicit handles
      (`c ...` line) or with handles equal to the position.
    - **Name** – station/junction name (only written for named kinds).
-   Click **Apply to Point** to write the values.
+   Click **Apply to Selected** to write the values to the selected control
+   point(s). Kind and handle flag apply to *all* selected points; the name
+   is written only when exactly one point is selected.
 4. The **Stations & Junctions** list is rebuilt automatically from the
    per-point data; use it to look up a station's game ID (probe hash) or
-   to jump to its control point.
-5. **Export .dat** writes the curve back to the file format. Distances are
+   to jump to its control point. The list header has a text filter that
+   matches the display name and the game name.
+5. The **Point Tools** panel works on the selected track's curve:
+   - **Select Points** – select every control point of the given kind.
+   - **Smooth Handles** – set all handles to AUTO.
+   - **Toggle Markers** – create (or remove) viewport text markers at all
+     named points. Markers are parented to the track curve and removed
+     automatically when the track or its markers are deleted.
+6. **Export .dat** writes the curve back to the file format. Distances are
    recomputed from the current point positions.
+
+### Batch operations
+
+- **Import Folder** – every `.dat` file in the folder becomes its own new
+  track; corrupt files are skipped with a warning and the rest of the
+  batch continues.
+- **Export All** – every track with a curve is exported to the folder as
+  `<track name>.dat` (invalid file-name characters are replaced); tracks
+  without a curve are skipped.
+
+The Track List panel also shows the selected track's statistics: total
+track length and the per-kind point counts.
 
 ## Data storage
 
@@ -65,7 +86,7 @@ import with a line number.
 
 ## Tests
 
-Both tests run inside headless Blender (`blender --background --python`).
+All tests run inside headless Blender (`blender --background --python`).
 Use an isolated user config so unrelated user addons can't interfere:
 
 ```
@@ -81,6 +102,10 @@ BLENDER_USER_CONFIG=<empty-dir> BLENDER_USER_SCRIPTS=<empty-dir>/scripts \
 BLENDER_USER_CONFIG=<empty-dir> BLENDER_USER_SCRIPTS=<empty-dir>/scripts \
   blender.exe --background \
   --python tests/verify_ui.py -- --dat <file.dat>
+
+BLENDER_USER_CONFIG=<empty-dir> BLENDER_USER_SCRIPTS=<empty-dir>/scripts \
+  blender.exe --background \
+  --python tests/verify_features.py -- --dat <file.dat>
 ```
 
 `tests/verify_roundtrip.py` is a black-box import/export round trip: curve
@@ -92,6 +117,14 @@ operator (including the point-selection sync), distance recomputation on
 export after moving a point, record padding/truncation on control point
 add/remove, corrupt-file rejection, and .blend save/reload persistence.
 
-`tests/verify_ui.py` is a UI smoke test: it drives both N-panel `draw()`
-methods and the two `UIList.draw_item()` methods against a mock layout to
-catch runtime errors that class registration cannot.
+`tests/verify_ui.py` is a UI smoke test: it drives all N-panel `draw()`
+methods and the two `UIList.draw_item()` methods (plus the node list
+filter box) against a mock layout to catch runtime errors that class
+registration cannot.
+
+`tests/verify_features.py` covers the batch/QoL features: folder import
+with corrupt-file continuation, export-all with empty-track skipping and
+file-name sanitizing, select-by-kind, batch apply to all selected points
+(name suppressed for multi-selections), handle smoothing, the node list
+filter, viewport markers (create/toggle/cleanup on track delete) and track
+statistics.

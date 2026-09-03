@@ -1,6 +1,8 @@
 """Small context/selection helpers shared by operators and UI panels."""
 import bpy
 
+from .dat_format import MARKER_PREFIX
+
 
 def get_selected_track(context):
     """The track entry selected in the Track List, or None."""
@@ -60,8 +62,24 @@ def selected_point_index(curve_data):
     return None
 
 
+def objects_with_prefix(prefix):
+    """All objects whose name starts with `prefix`."""
+    return [ob for ob in bpy.data.objects if ob.name.startswith(prefix)]
+
+
+def remove_objects(objects):
+    """Delete objects and their orphaned datablocks."""
+    for ob in objects:
+        data = ob.data
+        bpy.data.objects.remove(ob, do_unlink=True)
+        if data is not None and data.users == 0 and \
+           isinstance(data, bpy.types.Curve):
+            bpy.data.curves.remove(data)
+
+
 def remove_track_object(track):
-    """Delete the curve object of a track and its orphaned curve data.
+    """Delete the curve object of a track, its orphaned curve data and
+    any viewport markers created for it.
 
     Prefers the track_object pointer, falls back to the object name
     used at import time ('Track-<track name>').
@@ -69,9 +87,9 @@ def remove_track_object(track):
     obj = track_object_or_none(track)
     if obj is None:
         obj = bpy.data.objects.get('Track-' + track.name)
-    if obj is None:
-        return
-    curve_data = obj.data
-    bpy.data.objects.remove(obj, do_unlink=True)
-    if curve_data is not None and curve_data.users == 0:
-        bpy.data.curves.remove(curve_data)
+    if obj is not None:
+        curve_data = obj.data
+        bpy.data.objects.remove(obj, do_unlink=True)
+        if curve_data is not None and curve_data.users == 0:
+            bpy.data.curves.remove(curve_data)
+    remove_objects(objects_with_prefix(MARKER_PREFIX + track.name + "-"))

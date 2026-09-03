@@ -11,7 +11,8 @@ whenever point data changes, so it can never fall out of sync the way
 the old manually-managed node list could.
 """
 import bpy
-from .dat_format import (KIND_ITEMS, NAMED_KINDS, KIND_LABELS)
+from .dat_format import (KIND_ITEMS, NAMED_KINDS, KIND_LABELS, distance,
+                         MARKER_PREFIX)
 from .utils import compute_probe_hash
 
 
@@ -174,3 +175,42 @@ def refresh_nodes(track):
         item.node_index = index
         item.id = point_node_id(bp.co)
     return len(nodes)
+
+
+def marker_prefix(track):
+    """Object-name prefix for the viewport markers of one track.
+
+    Markers are text objects named ``TrainMarker-<track name>-<index>``
+    so a track's markers can be found and removed by prefix.
+    """
+    return MARKER_PREFIX + track.name + "-"
+
+
+def track_stats(track):
+    """Return ``(total_length, kind_counts)`` for a track's curve.
+
+    ``total_length`` is the sum of the straight-line distances between
+    consecutive control points, wrapping the last point back to the first
+    (the same segments written to the .dat on export). ``kind_counts`` is
+    a dict mapping each point kind (string) to how many points have it.
+    Returns ``(0.0, {})`` when the track has no curve or no points.
+    """
+    obj = track.track_object
+    if obj is None or not hasattr(obj, "type") or obj.type != 'CURVE':
+        return 0.0, {}
+    spline = get_spline(obj.data)
+    if spline is None:
+        return 0.0, {}
+    points = spline.bezier_points
+    count = len(points)
+    if count == 0:
+        return 0.0, {}
+    records = obj.data.train_points
+    total = 0.0
+    kind_counts = {}
+    for i, bp in enumerate(points):
+        total += distance(bp.co, points[(i + 1) % count].co)
+        rec = records[i] if i < len(records) else None
+        kind = rec.kind if rec is not None else "0"
+        kind_counts[kind] = kind_counts.get(kind, 0) + 1
+    return total, kind_counts
