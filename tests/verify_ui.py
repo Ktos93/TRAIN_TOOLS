@@ -14,6 +14,24 @@ import bpy
 
 FAILURES = []
 
+# Valid icon identifiers of the running Blender, taken from the UILayout
+# RNA so the mock raises on the same things the real layout would.
+# (Populated in main() before any draw runs.)
+VALID_ICONS = set()
+
+
+def load_valid_icons():
+    for fn_name in ("operator", "label"):
+        fn = bpy.types.UILayout.bl_rna.functions[fn_name]
+        for p in fn.parameters:
+            if p.identifier == "icon":
+                VALID_ICONS.update(i.identifier for i in p.enum_items)
+
+
+def check_icon(icon, where):
+    if icon and icon not in VALID_ICONS:
+        raise ValueError("invalid icon %r in %s" % (icon, where))
+
 
 def check(name, ok, detail=""):
     status = "PASS" if ok else "FAIL"
@@ -34,10 +52,12 @@ class MockLayout:
         self.use_property_decorate = False
 
     def label(self, text=None, icon=None, icon_value=0):
+        check_icon(icon, "label %r" % text)
         self.labels.append(text if text is not None else icon)
         return self
 
     def operator(self, idname, text="", icon="", **kw):
+        check_icon(icon, "operator %s" % idname)
         self.operators.append((idname, text))
         return self
 
@@ -71,6 +91,10 @@ def main():
     argv = argv[argv.index("--") + 1:] if "--" in argv else []
     opts = dict(zip(argv[::2], argv[1::2]))
     dat = opts.get("--dat")
+
+    load_valid_icons()
+    check("valid_icons_loaded", len(VALID_ICONS) > 800,
+          "count=%d" % len(VALID_ICONS))
 
     import TRAIN_TOOLS
     TRAIN_TOOLS.register()
@@ -180,6 +204,9 @@ def main():
               in mock.operators
               and ("train.toggle_markers", "Toggle Markers") in mock.operators,
               "ops=%r" % mock.operators)
+        check("panel.point_tools_kind",
+              "train_select_kind" in {pn for _, pn in mock.props},
+              "props=%r" % [pn for _, pn in mock.props])
     except Exception:
         check("panel.point_tools_draw", False, traceback.format_exc())
 

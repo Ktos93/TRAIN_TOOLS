@@ -113,6 +113,12 @@ def register():
     if not hasattr(bpy.types.Scene, "point_name"):
         bpy.types.Scene.point_name = bpy.props.StringProperty(
             name="Point Name")
+    if not hasattr(bpy.types.Scene, "train_select_kind"):
+        bpy.types.Scene.train_select_kind = bpy.props.EnumProperty(
+            name="Select Kind",
+            description="Kind of points to select with 'Select Points'",
+            default="0",
+            items=storage.KIND_ITEMS)
     if not hasattr(bpy.types.Scene, "train_sync_key"):
         bpy.types.Scene.train_sync_key = bpy.props.StringProperty(
             name="Train Sync Key", description="Internal sync key")
@@ -125,7 +131,7 @@ def unregister():
 
     for prop in ("tracks", "track_index", "curve_point_index",
                  "point_kind", "point_is_curve", "point_name",
-                 "train_sync_key"):
+                 "train_select_kind", "train_sync_key"):
         if hasattr(bpy.types.Scene, prop):
             delattr(bpy.types.Scene, prop)
 

@@ -61,7 +61,7 @@ class TRAIN_PT_Tools(bpy.types.Panel):
         row.operator("train.hide", text="Hide", icon='RESTRICT_VIEW_ON')
 
         layout.separator()
-        layout.label(text="Stations & Junctions", icon='PIVOT_POINT')
+        layout.label(text="Stations & Junctions", icon='PIVOT_CURSOR')
         node_row = layout.row()
         node_col = node_row.column()
         node_col.template_list(
@@ -72,7 +72,7 @@ class TRAIN_PT_Tools(bpy.types.Panel):
             rows=4,
         )
         side = node_row.column(align=True)
-        side.operator("train.refresh_nodes", text="", icon='REFRESH')
+        side.operator("train.refresh_nodes", text="", icon='FILE_REFRESH')
 
         node = helpers.get_selected_node(context)
         if node is not None:
@@ -135,16 +135,16 @@ class TRAIN_PT_Point_Tools(bpy.types.Panel):
             layout.label(text="Select a track with a curve", icon='INFO')
             return
 
+        scene = context.scene
         layout.label(text="Select by Kind", icon='RESTRICT_SELECT_OFF')
-        op = layout.operator("train.select_points_kind", text="Select Points")
-        layout.prop(op, "kind", text="Kind")
+        layout.prop(scene, "train_select_kind", text="Kind")
+        layout.operator("train.select_points_kind", text="Select Points")
         layout.operator("train.smooth_handles", text="Smooth Handles",
                         icon='MOD_SMOOTH')
 
         layout.separator()
-
         layout.operator("train.toggle_markers", text="Toggle Markers",
-                        icon='MARK_MARKER')
+                        icon='MARKER')
 
 
 class TRAIN_UL_TRACKS_LIST(bpy.types.UIList):
@@ -161,7 +161,7 @@ class TRAIN_UL_NODE_LIST(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon,
                   active_data, active_property, index, flt_flag):
         layout.label(text=item.name, icon_value=icon)
-        layout.label(text="ID %s" % item.id, icon='PIVOT_POINT')
+        layout.label(text="ID %s" % item.id, icon='PIVOT_CURSOR')
 
     def draw_filter(self, context, layout):
         row = layout.row()

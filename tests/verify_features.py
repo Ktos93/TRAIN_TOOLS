@@ -143,7 +143,8 @@ def main():
     # --- 4) Select points by kind ---------------------------------------
     scene.track_index = 0
     try:
-        bpy.ops.train.select_points_kind(kind="8")
+        scene.train_select_kind = "8"
+        bpy.ops.train.select_points_kind()
         bpy.context.view_layer.update()
         points = alpha.track_object.data.splines[0].bezier_points
         records = alpha.track_object.data.train_points

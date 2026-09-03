@@ -298,12 +298,8 @@ class TRAIN_OT_Select_Points_Kind(bpy.types.Operator):
     bl_idname = "train.select_points_kind"
     bl_label = "Select Points by Kind"
     bl_description = "Select all control points of the given kind on the " \
-                     "selected track's curve"
-    kind: bpy.props.EnumProperty(
-        name="Kind",
-        description="Point kind to select",
-        default="0",
-        items=dat_format.KIND_ITEMS)
+                     "selected track's curve (kind taken from the scene " \
+                     "property set in the Point Tools panel)"
 
     @classmethod
     def poll(cls, context):
@@ -318,9 +314,10 @@ class TRAIN_OT_Select_Points_Kind(bpy.types.Operator):
         spline = storage.get_spline(obj.data)
         storage.ensure_point_records(obj.data, len(spline.bezier_points))
         records = obj.data.train_points
+        kind = context.scene.train_select_kind
         count = 0
         for i, bp in enumerate(spline.bezier_points):
-            selected = records[i].kind == self.kind
+            selected = records[i].kind == kind
             bp.select_control_point = selected
             if selected:
                 count += 1
@@ -328,7 +325,7 @@ class TRAIN_OT_Select_Points_Kind(bpy.types.Operator):
         obj.select_set(True)
         self.report({'INFO'},
                     "Selected %d point(s) with kind %s"
-                    % (count, dat_format.KIND_LABELS[self.kind]))
+                    % (count, dat_format.KIND_LABELS[kind]))
         return {'FINISHED'}
 
 
