@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+# test artifacts
+tests/tmp_*/
+*.blend
+# game data files
+*.dat
