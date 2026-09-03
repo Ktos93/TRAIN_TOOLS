@@ -210,6 +210,28 @@ def write_points(curve_data, points, uids=None):
         rec.name = pt.name
 
 
+def create_track_curve(track, positions):
+    """Build a fresh bezier curve object for `track` from scratch.
+
+    One bezier point per position, each with a fresh uid and a default
+    record (kind none, handles enabled). The object is created but not
+    linked to any collection.
+    """
+    curve_data = bpy.data.curves.new('Track-' + track.name, type='CURVE')
+    curve_data.dimensions = '3D'
+    spline = curve_data.splines.new('BEZIER')
+    spline.bezier_points.add(len(positions) - 1)
+    uids = generate_uids(len(positions))
+    for i, pos in enumerate(positions):
+        bp = spline.bezier_points[i]
+        bp.co = pos
+        bp.radius = uint_to_float(uids[i])
+    for uid in uids:
+        rec = curve_data.train_points.add()
+        rec.uid = uid
+    return bpy.data.objects.new('Track-' + track.name, curve_data)
+
+
 def refresh_nodes(track):
     """Rebuild a track's derived node list from its per-point records.
 

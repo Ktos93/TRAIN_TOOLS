@@ -5,8 +5,9 @@ Blender addon for editing RDR2 train track `.dat` files as bezier curves.
 ## Usage
 
 1. Open the sidebar (N key) > **TRAIN** tab.
-2. **Add Track**, then **Import .dat** to load a train file into the
-   selected track. The file becomes a bezier curve object named
+2. **Add Track** creates a new track with a two-point starting curve
+   you can shape right away, or **Import .dat** to replace it with the
+   points of a train file. The curve is a bezier curve object named
    `Track-<name>`.
 3. Edit the curve like any other bezier curve. The **Point Info** panel
    shows the selected control point's data:
@@ -128,5 +129,6 @@ registration cannot.
 with corrupt-file continuation, export-all with empty-track skipping and
 file-name sanitizing, select-by-kind, batch apply to all selected points
 (name suppressed for multi-selections), handle smoothing, the node list
-filter, viewport markers (create/toggle/cleanup on track delete) and track
-statistics.
+filter, viewport markers (create/toggle/cleanup on track delete), track
+statistics and creating a track from scratch (two-point starting curve
+with uids, clean delete).

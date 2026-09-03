@@ -11,14 +11,24 @@ from . import dat_format, helpers, storage
 class TRAIN_OT_Add_Track(bpy.types.Operator):
     bl_idname = "train.addtrack"
     bl_label = "Add Track"
-    bl_description = "Add a new empty track entry"
+    bl_description = "Add a new track with a two-point starting curve"
 
     def execute(self, context):
         tracks = context.scene.tracks
         tracks.add()
         track = tracks[-1]
         track.name = "New Track %d" % (len(tracks) - 1)
+        obj = storage.create_track_curve(
+            track, [(0.0, 0.0, 0.0), (10.0, 0.0, 0.0)])
+        bpy.context.collection.objects.link(obj)
+        track.track_object = obj
+        track.total_points = len(obj.data.splines[0].bezier_points)
+        track.curve_points = sum(
+            1 for r in obj.data.train_points if r.is_curve)
+        storage.refresh_nodes(track)
         context.scene.track_index = len(tracks) - 1
+        # Force the Point Info panel to re-sync from the new records.
+        context.scene.train_sync_key = ""
         return {'FINISHED'}
 
 

@@ -6,8 +6,8 @@ Runs inside Blender 4.0 (background):
 Covers: batch import from a folder (with corrupt-file continuation),
 export-all with empty-track skipping and file-name sanitizing, point
 selection by kind, batch apply to all selected points, handle smoothing,
-the node list name filter, viewport text markers (create/toggle/cleanup)
-and track statistics.
+the node list name filter, viewport text markers (create/toggle/cleanup),
+track statistics and creating a track from scratch without an import.
 
 Exit code 0 = all checks passed, 1 = failure.
 """
@@ -247,7 +247,7 @@ def main():
 
         nodes = alpha.nodes
         n0 = nodes[0]
-        needle = (n0.node_name or n0.id)[:5].lower()
+        needle = (n0.node_name or "unnamed")[:5].lower()
         flags, neworder = run_filter(needle)
         expected_match = [
             i for i, n in enumerate(nodes)
@@ -318,6 +318,49 @@ def main():
         check("markers.track_gone", len(scene.tracks) == 1)
     except Exception as e:
         check("markers.created", False, repr(e))
+        traceback.print_exc()
+
+    # --- 9) Add track from scratch -------------------------------------
+    try:
+        scene.tracks.clear()
+        scene.track_index = 0
+        bpy.ops.train.addtrack()
+        check("addtrack.entry", len(scene.tracks) == 1
+              and scene.tracks[0].name == "New Track 0",
+              f"got {[t.name for t in scene.tracks]}")
+        check("addtrack.selected", scene.track_index == 0)
+        obj = bpy.data.objects.get("Track-New Track 0")
+        check("addtrack.object",
+              obj is not None and obj.type == 'CURVE', f"got {obj}")
+        if obj is not None:
+            spline = obj.data.splines[0]
+            pts = spline.bezier_points
+            check("addtrack.two_points", len(pts) == 2,
+                  f"got {len(pts)}")
+            check("addtrack.spacing",
+                  abs(pts[0].co[0]) < 1e-6
+                  and abs(pts[1].co[0] - pts[0].co[0] - 10.0) < 1e-6
+                  and pts[0].co[1] == 0.0 and pts[0].co[2] == 0.0,
+                  f"got {tuple(pts[0].co)} / {tuple(pts[1].co)}")
+            uids = [storage.float_to_uint(bp.radius) for bp in pts]
+            check("addtrack.uids", all(u > 0 for u in uids)
+                  and len(set(uids)) == 2, f"got {uids}")
+            records = obj.data.train_points
+            check("addtrack.records", len(records) == 2
+                  and all(records[i].uid == uids[i] for i in (0, 1))
+                  and all(r.kind == "0" for r in records)
+                  and all(r.is_curve for r in records)
+                  and all(r.name == "" for r in records))
+            track = scene.tracks[0]
+            check("addtrack.track_ref", track.track_object == obj
+                  and track.total_points == 2
+                  and track.curve_points == 2
+                  and len(track.nodes) == 0)
+            bpy.ops.train.deletetrack()
+            check("addtrack.deleted", len(scene.tracks) == 0
+                  and bpy.data.objects.get("Track-New Track 0") is None)
+    except Exception as e:
+        check("addtrack.entry", False, repr(e))
         traceback.print_exc()
 
     try:
