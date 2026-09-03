@@ -62,22 +62,17 @@ class TRAIN_PT_Tools(bpy.types.Panel):
 
         layout.separator()
         layout.label(text="Stations & Junctions", icon='PIVOT_CURSOR')
-        node_row = layout.row()
-        node_col = node_row.column()
-        node_col.template_list(
+        layout.template_list(
             TRAIN_UL_NODE_LIST.bl_idname,
             "",
             track, "nodes",
             track, "node_index",
             rows=4,
         )
-        side = node_row.column(align=True)
-        side.operator("train.refresh_nodes", text="", icon='FILE_REFRESH')
 
         node = helpers.get_selected_node(context)
         if node is not None:
             layout.separator()
-            layout.label(text="ID: " + node.id)
             layout.label(text="Point index: %d" % node.node_index)
             layout.operator("train.select_node_point",
                             text="Select Point", icon='RESTRICT_SELECT_OFF')
@@ -162,7 +157,6 @@ class TRAIN_UL_NODE_LIST(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon,
                   active_data, active_property, index, flt_flag):
         layout.label(text=item.name, icon_value=icon)
-        layout.label(text="ID %s" % item.id, icon='PIVOT_CURSOR')
 
     def draw_filter(self, context, layout):
         row = layout.row()

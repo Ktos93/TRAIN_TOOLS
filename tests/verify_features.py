@@ -289,7 +289,7 @@ def main():
             mk_idx = int(mk.name.rsplit("-", 1)[1])
             bp = points[mk_idx]
             rec = records[mk_idx]
-            want_body = rec.name if rec.name else storage.point_node_id(bp.co)
+            want_body = rec.name or "Unnamed"
             check("markers.font", mk.type == 'FONT', f"got {mk.type}")
             check("markers.parented", mk.parent == obj)
             check("markers.location",

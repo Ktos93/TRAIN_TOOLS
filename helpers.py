@@ -1,6 +1,7 @@
 """Small context/selection helpers shared by operators and UI panels."""
 import bpy
 
+from . import storage
 from .dat_format import MARKER_PREFIX
 
 
@@ -49,11 +50,7 @@ def track_for_object(context, obj):
 
 def selected_point_index(curve_data):
     """Index of the selected bezier control point, or None."""
-    spline = None
-    for s in curve_data.splines:
-        if s.type == 'BEZIER':
-            spline = s
-            break
+    spline = storage.get_spline(curve_data)
     if spline is None:
         return None
     for index, point in enumerate(spline.bezier_points):

@@ -113,9 +113,8 @@ def main():
         p.select_control_point = False
     points[idx].select_control_point = True
     bpy.context.view_layer.update()
-    check("apply.panel_sync", scene.point_kind == orig_kind
-          and scene.curve_point_index == idx,
-          f"got kind={scene.point_kind} idx={scene.curve_point_index}")
+    check("apply.panel_sync", scene.point_kind == orig_kind,
+          f"got kind={scene.point_kind}")
     scene.point_kind = "1"
     scene.point_is_curve = True
     scene.point_name = "test_station"

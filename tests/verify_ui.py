@@ -250,10 +250,7 @@ def main():
         ui.TRAIN_UL_NODE_LIST.draw_item(
             object(), ctx, mock, track, node, icon,
             track, "node_index", 0, 0)
-        check("uilist.nodes_draw_item",
-              node.name in mock.labels and
-              any(l is not None and str(l).startswith("ID ")
-                  for l in mock.labels),
+        check("uilist.nodes_draw_item", node.name in mock.labels,
               "labels=%r" % mock.labels)
     except Exception:
         check("uilist.nodes_draw_item", False, traceback.format_exc())

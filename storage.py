@@ -22,7 +22,6 @@ import struct
 import bpy
 from .dat_format import (KIND_ITEMS, NAMED_KINDS, KIND_LABELS, distance,
                          MARKER_PREFIX)
-from .utils import compute_probe_hash
 
 
 def float_to_uint(f: float) -> int:
@@ -101,15 +100,11 @@ class Node_Properties(bpy.types.PropertyGroup):
     node_index: bpy.props.IntProperty(name="Point Index",
                                       description="Index of the control "
                                                   "point in the curve")
-    id: bpy.props.StringProperty(name="Game ID",
-                                 description="Probe hash computed from the "
-                                             "point position")
 
 
 class Track_Properties(bpy.types.PropertyGroup):
     """One track entry (a .dat file <-> a bezier curve object)."""
     name: bpy.props.StringProperty(name="Name")
-    id: bpy.props.IntProperty(name="ID", default=0)
     total_points: bpy.props.IntProperty(name="Total Points")
     curve_points: bpy.props.IntProperty(name="Curve Points")
     type: bpy.props.StringProperty(name="Type", default="close")
@@ -146,13 +141,6 @@ def get_spline(curve_data):
         if spline.type == 'BEZIER':
             return spline
     return None
-
-
-def point_count(curve_data):
-    spline = get_spline(curve_data)
-    if spline is None:
-        return 0
-    return len(spline.bezier_points)
 
 
 def resync_point_records(curve_data):
@@ -222,14 +210,6 @@ def write_points(curve_data, points, uids=None):
         rec.name = pt.name
 
 
-def point_node_id(position):
-    """Game probe hash for a point position (same math as the game)."""
-    data = [int(position[0] * 100.0) & 0xFFFFFFFF,
-            int(position[1] * 100.0) & 0xFFFFFFFF,
-            int(position[2] * 100.0) & 0xFFFFFFFF]
-    return compute_probe_hash(data, 0)
-
-
 def refresh_nodes(track):
     """Rebuild a track's derived node list from its per-point records.
 
@@ -249,11 +229,9 @@ def refresh_nodes(track):
         if rec is None or rec.kind not in NAMED_KINDS:
             continue
         item = nodes.add()
-        display = rec.name if rec.name else point_node_id(bp.co)
-        item.name = f"{KIND_LABELS[rec.kind]} | {display}"
+        item.name = f"{KIND_LABELS[rec.kind]} | {rec.name or 'Unnamed'}"
         item.node_name = rec.name
         item.node_index = index
-        item.id = point_node_id(bp.co)
     return len(nodes)
 
 

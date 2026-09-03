@@ -1,7 +1,7 @@
 bl_info = {
     "name": "TRAIN TOOLS",
     "author": "ktos93",
-    "version": (0, 6),
+    "version": (0, 8),
     "blender": (4, 0, 0),
     "location": "View3D > Sidebar > TRAIN",
     "description": "Import/export RDR2 train track .dat files as bezier "

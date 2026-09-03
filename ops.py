@@ -18,7 +18,6 @@ class TRAIN_OT_Add_Track(bpy.types.Operator):
         tracks.add()
         track = tracks[-1]
         track.name = "New Track %d" % (len(tracks) - 1)
-        track.id = 0
         context.scene.track_index = len(tracks) - 1
         return {'FINISHED'}
 
@@ -388,7 +387,7 @@ class TRAIN_OT_Toggle_Markers(bpy.types.Operator):
             rec = records[i] if i < len(records) else None
             if rec is None or rec.kind not in dat_format.NAMED_KINDS:
                 continue
-            text = rec.name if rec.name else storage.point_node_id(bp.co)
+            text = rec.name or "Unnamed"
             name = "%s%d" % (prefix, i)
             marker = bpy.data.objects.new(name,
                                           bpy.data.curves.new(name,
@@ -400,23 +399,6 @@ class TRAIN_OT_Toggle_Markers(bpy.types.Operator):
             bpy.context.collection.objects.link(marker)
             count += 1
         self.report({'INFO'}, "Created %d marker(s)" % count)
-        return {'FINISHED'}
-
-
-class TRAIN_OT_Refresh_Nodes(bpy.types.Operator):
-    bl_idname = "train.refresh_nodes"
-    bl_label = "Refresh Nodes"
-    bl_description = "Rebuild the station/junction list from the curve's " \
-                     "point data"
-
-    @classmethod
-    def poll(cls, context):
-        return helpers.get_selected_track(context) is not None
-
-    def execute(self, context):
-        track = helpers.get_selected_track(context)
-        count = storage.refresh_nodes(track)
-        self.report({'INFO'}, "Node list rebuilt: %d entries" % count)
         return {'FINISHED'}
 
 
@@ -449,7 +431,6 @@ class TRAIN_OT_Select_Node_Point(bpy.types.Operator):
         spline.bezier_points[index].select_control_point = True
         bpy.context.view_layer.objects.active = obj
         obj.select_set(True)
-        context.scene.curve_point_index = index
         return {'FINISHED'}
 
 

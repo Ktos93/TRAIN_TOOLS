@@ -19,9 +19,9 @@ Blender addon for editing RDR2 train track `.dat` files as bezier curves.
    point(s). Kind and handle flag apply to *all* selected points; the name
    is written only when exactly one point is selected.
 4. The **Stations & Junctions** list is rebuilt automatically from the
-   per-point data; use it to look up a station's game ID (probe hash) or
-   to jump to its control point. The list header has a text filter that
-   matches the display name and the game name.
+   per-point data; use it to jump to a station's control point. The list
+   header has a text filter that matches the display name and the
+   station name.
 5. The **Point Tools** panel works on the selected track's curve:
    - **Select Points** – select every control point of the given kind.
    - **Smooth Handles** – set all handles to AUTO.
@@ -84,7 +84,7 @@ import with a line number.
 | `ops.py`       | Operators (track mgmt, import/export, point editing)  |
 | `ui.py`        | N-panel panels and UI lists                           |
 | `main.py`      | Scene properties, depsgraph sync, register/unregister |
-| `utils.py`     | Game probe hash + shared UI list helper (Sollumz)     |
+| `utils.py`     | Shared UI list helper (Sollumz)                       |
 
 ## Tests
 

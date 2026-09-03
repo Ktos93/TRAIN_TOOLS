@@ -20,7 +20,6 @@ from .ops import (
     TRAIN_OT_Select_Points_Kind,
     TRAIN_OT_Smooth_Handles,
     TRAIN_OT_Toggle_Markers,
-    TRAIN_OT_Refresh_Nodes,
     TRAIN_OT_Select_Node_Point,
     TRAIN_OT_Show,
     TRAIN_OT_Hide,
@@ -67,7 +66,6 @@ def depsgraph_update_post(scene, depsgraph):
     if scene.train_sync_key == key:
         return
     scene.train_sync_key = key
-    scene.curve_point_index = index
     rec = curve_data.train_points[index]
     scene.point_kind = rec.kind
     scene.point_is_curve = rec.is_curve
@@ -86,7 +84,6 @@ def register():
                 TRAIN_OT_Select_Points_Kind,
                 TRAIN_OT_Smooth_Handles,
                 TRAIN_OT_Toggle_Markers,
-                TRAIN_OT_Refresh_Nodes,
                 TRAIN_OT_Select_Node_Point,
                 TRAIN_OT_Show,
                 TRAIN_OT_Hide,
@@ -103,9 +100,6 @@ def register():
     if not hasattr(bpy.types.Scene, "track_index"):
         bpy.types.Scene.track_index = bpy.props.IntProperty(
             name="Selected Track Index")
-    if not hasattr(bpy.types.Scene, "curve_point_index"):
-        bpy.types.Scene.curve_point_index = bpy.props.IntProperty(
-            name="Selected Curve Point Index")
     if not hasattr(bpy.types.Scene, "point_kind"):
         bpy.types.Scene.point_kind = bpy.props.EnumProperty(
             name="Point Kind", default="0", items=storage.KIND_ITEMS)
@@ -131,8 +125,8 @@ def register():
 def unregister():
     bpy.app.handlers.depsgraph_update_post.remove(depsgraph_update_post)
 
-    for prop in ("tracks", "track_index", "curve_point_index",
-                 "point_kind", "point_is_curve", "point_name",
+    for prop in ("tracks", "track_index", "point_kind",
+                 "point_is_curve", "point_name",
                  "train_select_kind", "train_sync_key"):
         if hasattr(bpy.types.Scene, prop):
             delattr(bpy.types.Scene, prop)
