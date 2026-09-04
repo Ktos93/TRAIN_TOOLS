@@ -219,6 +219,7 @@ def create_track_curve(track, positions):
     """
     curve_data = bpy.data.curves.new('Track-' + track.name, type='CURVE')
     curve_data.dimensions = '3D'
+    curve_data.twist_mode = 'Z_UP'  
     spline = curve_data.splines.new('BEZIER')
     spline.bezier_points.add(len(positions) - 1)
     uids = generate_uids(len(positions))

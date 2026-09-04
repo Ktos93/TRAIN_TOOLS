@@ -112,6 +112,7 @@ def main():
     _, points = dat_format.parse_file(dat)
     curve_data = bpy.data.curves.new("Track-Smoke", type="CURVE")
     curve_data.dimensions = "3D"
+    curve_data.twist_mode = 'Z_UP'  
     spline = curve_data.splines.new("BEZIER")
     spline.bezier_points.add(len(points) - 1)
     for i, pt in enumerate(points):

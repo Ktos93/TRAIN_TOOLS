@@ -98,6 +98,7 @@ def import_dat_into_track(context, track, filepath):
 
     curve_data = bpy.data.curves.new('Track-' + track.name, type='CURVE')
     curve_data.dimensions = '3D'
+    curve_data.twist_mode = 'Z_UP'  
     spline = curve_data.splines.new('BEZIER')
     spline.bezier_points.add(len(points) - 1)
     uids = storage.generate_uids(len(points))
