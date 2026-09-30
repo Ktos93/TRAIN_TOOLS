@@ -30,6 +30,11 @@ class TRAIN_PT_Tools(bpy.types.Panel):
             rows=3,
         )
 
+        layout.separator()
+        row = layout.row()
+        row.operator("train.import_dat", text="Import .dat")
+        row.operator("train.import_folder", text="Import Folder")
+
         track = helpers.get_selected_track(context)
         if track is None:
             layout.label(text="No track selected", icon='INFO')
@@ -50,10 +55,7 @@ class TRAIN_PT_Tools(bpy.types.Panel):
 
         layout.separator()
         row = layout.row()
-        row.operator("train.import_dat", text="Import .dat")
         row.operator("train.export_dat", text="Export .dat")
-        row = layout.row()
-        row.operator("train.import_folder", text="Import Folder")
         row.operator("train.export_all", text="Export All")
 
         row = layout.row()

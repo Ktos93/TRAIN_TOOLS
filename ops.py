@@ -54,16 +54,19 @@ class TRAIN_OT_Delete_Track(bpy.types.Operator):
 class TRAIN_OT_Import_Track(bpy.types.Operator, ImportHelper):
     bl_idname = "train.import_dat"
     bl_label = "Import Track (.dat)"
-    bl_description = "Import an RDR2 train .dat file into the selected track"
+    bl_description = ("Import an RDR2 train .dat file into the selected "
+                      "track, or into a new track when none is selected")
     filename_ext = ".dat"
     filter_glob: bpy.props.StringProperty(default="*.dat", options={'HIDDEN'})
 
-    @classmethod
-    def poll(cls, context):
-        return helpers.get_selected_track(context) is not None
-
     def execute(self, context):
         track = helpers.get_selected_track(context)
+        if track is None:
+            tracks = context.scene.tracks
+            tracks.add()
+            track = tracks[-1]
+            track.name = "New Track %d" % (len(tracks) - 1)
+            context.scene.track_index = len(tracks) - 1
         ok, message, warning = import_dat_into_track(
             context, track, self.filepath)
         if not ok:
