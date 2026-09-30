@@ -139,6 +139,10 @@ class TRAIN_OT_Import_Folder(bpy.types.Operator):
         description="Folder containing train .dat files",
         subtype='DIR_PATH')
 
+    def invoke(self, context, event):
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+
     def execute(self, context):
         if not self.directory:
             self.report({'ERROR'}, "no folder selected")
@@ -247,6 +251,10 @@ class TRAIN_OT_Export_All(bpy.types.Operator):
         name="Folder",
         description="Folder to write the .dat files to",
         subtype='DIR_PATH')
+
+    def invoke(self, context, event):
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
 
     def execute(self, context):
         if not self.directory:
